@@ -1,71 +1,70 @@
-# -*- coding: utf-8 -*-
-# @Author    : Eurkon
-# @Date      : 2021/6/5 10:16
+const express = require('express');
+const axios = require('axios')
 
-import json
-import time
-import requests
-from http.server import BaseHTTPRequestHandler
+const app = express()
 
+app.all('*', function(req, res, next) {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Headers', 'Content-Type');
+    res.header('Access-Control-Allow-Methods', '*');
+    res.header('Content-Type', 'application/json;charset=utf-8');
+    next();
+});
 
-def get_data():
-    """微博热搜
+app.get('/weibo', async(req, res) => {
+    try {
+        let data = await get_data();
+        res.send(data);
+    } catch (e) {
+        res.send('0');
+    }
+})
 
-    Args:
-        params (dict): {}
-
-    Returns:
-        json: {title: 标题, url: 地址, num: 热度数值, hot: 热搜等级}
-    """
-
-    data = []
-    response = requests.get("https://weibo.com/ajax/side/hotSearch")
-    data_json = response.json()['data']['realtime']
-    jyzy = {
+async function get_data() {
+    let dataList = []
+    let { data } = await axios.get('https://weibo.com/ajax/side/hotSearch');
+    let data_json = data.data.realtime
+    let jyzy = {
         '电影': '影',
         '剧集': '剧',
         '综艺': '综',
         '音乐': '音'
-    }
+    };
 
-    for data_item in data_json:
-        hot = ''
-        # 如果是广告，则不添加
-        if 'is_ad' in data_item:
-            continue
-        if 'flag_desc' in data_item:
-            hot = jyzy.get(data_item['flag_desc'])
-        if 'is_boom' in data_item:
+    for (let i = 0; i < data_json.length; i++) {
+        let hot = ''
+        
+        if ('is_ad' in data_json[i] == true) {
+            continue;
+        } 
+        if ('flag_desc' in data_json[i] == true) {
+            hot = jyzy[data_json[i]['flag_desc']]
+        } 
+        if ('is_boom' in data_json[i] == true) {
             hot = '爆'
-        if 'is_hot' in data_item:
+        }
+        if ('is_hot' in data_json[i] == true) {
             hot = '热'
-        if 'is_fei' in data_item:
+        } 
+        if ('is_fei' in data_json[i] == true) {
             hot = '沸'
-        if 'is_new' in data_item:
+        } 
+        if ('is_new' in data_json[i] == true) {
             hot = '新'
-
-        dic = {
-            'title': data_item['note'],
-            'url': 'https://s.weibo.com/weibo?q=%23' + data_item['word'] + '%23',
-            'num': data_item['num'],
+        }
+        
+        let dic = {
+            'title': data_json[i]['note'],
+            'url': 'https://s.weibo.com/weibo?q=%23' + data_json[i]['word'] + '%23',
+            'num': data_json[i]['num'],
             'hot': hot
         }
-        data.append(dic)
-
-    return data
-
-
-class handler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        data = get_data()
-        self.send_response(200)
-        self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('Cache-Control', 'no-cache')
-        self.send_header('Content-type', 'application/json')
-        self.end_headers()
-        self.wfile.write(json.dumps(data).encode('utf-8'))
-        return
+        
+        dataList.push(dic)
+    }
+    return dataList
+}
 
 
-if __name__ == '__main__':
-    print(get_data())
+
+app.listen(3000)
